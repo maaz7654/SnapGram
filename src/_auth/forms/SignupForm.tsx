@@ -1,21 +1,25 @@
 import {z} from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Link } from "react-router-dom";
 
 import React from 'react';
 
-
+import { useToast } from "@/hooks/use-toast";
 import {
   Form,FormControl,FormDescription,FormField,FormItem,FormLabel, FormMessage,} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { SignupValidation } from "@/lib/validations";
+import  Loader  from "../../components/shared/Loader.tsx";
+import { createNewUser } from "@/lib/appwrite/api.ts";
  
 
 
 
 const SignupForm = () => {
 
+  const { toast } = useToast();
   const isLoading=false;
 
   // 1. Define your form.
@@ -30,10 +34,25 @@ const SignupForm = () => {
   })
  
   // 2. Define a submit handler.
-  function onSubmit(values: z.infer<typeof SignupValidation>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    console.log(values)
+  async function onSubmit(values: z.infer<typeof SignupValidation>) {
+    
+    const newUser=await createNewUser(values);
+   
+    if(!newUser)
+    {
+      return toast({
+        title: "Sign up failed. Please try again",
+ 
+      }) 
+    }
+
+
+    // const session = await signInAccount()
+
+
+
+
+
   }
 
 
@@ -97,7 +116,18 @@ const SignupForm = () => {
               </FormItem>
             )}
           />
-          <Button type="submit" className="shad-button_primary">Submit</Button>
+          <Button type="submit" className="shad-button_primary">
+            {isLoading?(
+              <div className="flex-center gap-2">
+                <Loader /> Loading...
+              </div>
+            ) : "Sign Up"}
+          </Button>
+
+          <p className="text-small-regular text-light-2 text-center mt-2">
+            Already have an account?
+            <Link to="/sign-in" className="text-primary-500 text-sm-semibodl ml-1 "> Log In</Link>
+          </p>
         </form>
         </div>
     </Form>
