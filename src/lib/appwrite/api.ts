@@ -68,11 +68,12 @@ export async function signInAccount(user: {
 }) {
 
     try {
-
+         
         const session = await account.createEmailPasswordSession(user.email, user.password);
         return session;
         
     } catch (error) {
+        console.log("error creating the session while sign in");
         console.log(error);
     }
 
@@ -100,3 +101,12 @@ export async function getCurrentUser() {
     }
 }
 
+
+export async function signOutAccount() {
+    try {
+        const session= await account.deleteSession("current");
+        return session;
+    } catch (error) {
+        console.log(error);
+    }
+}
