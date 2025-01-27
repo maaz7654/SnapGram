@@ -1,6 +1,8 @@
 import { ID, Query } from "appwrite";
-import { INewUser } from "@/types";
-import { account, appwriteconfig, avatars, databases } from "./config";
+import { INewPost, INewUser } from "@/types";
+import { account, appwriteconfig, avatars, databases, storage } from "./config";
+import { createPortal } from "react-dom";
+import { ImageDownIcon } from "lucide-react";
 
 
 export async function createNewUser(user:INewUser) {
@@ -110,3 +112,112 @@ export async function signOutAccount() {
         console.log(error);
     }
 }
+
+
+export async function createPost(post: INewPost) {
+
+    try{
+    
+        //upload the image to file storage
+        const uploadedFile=await uploadFile(post.file[0]);
+
+        if(!uploadedFile) throw Error;
+
+        const fileUrl=await getFilePreview(uploadedFile.$id);
+        console.log(fileUrl)
+
+        if(!fileUrl) {
+            deleteFile(uploadedFile.$id);
+            throw Error;
+        
+        }
+
+       const tags=post.tags?.replace(/ /g,' ').split(',') || [];
+        
+
+       //save post to database
+
+       const newPost= await databases.createDocument(
+        appwriteconfig.databaseId,
+        appwriteconfig.postCollectionId,
+        ID.unique(),
+        {
+            creator: post.userId,
+            caption: post.caption,
+            imageUrl: fileUrl as string,
+            imageid: uploadedFile?.$id,
+            location: post.location,
+            tags: tags,
+        }
+       );
+
+       if(!newPost)
+       {
+        deleteFile(uploadedFile.$id);
+        throw Error;
+       }
+
+       return newPost;
+        
+    } catch (error) {
+        console.log(error);
+    }
+
+}
+
+export async function uploadFile(file : File)
+{
+    try {
+        const uploadedFile=await storage.createFile(
+            appwriteconfig.storageId,
+            ID.unique(),
+            file
+        );
+
+        return uploadedFile;
+        
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+export async function getFilePreview(fileId: string)
+{
+    try {
+        const fileUrl= storage.getFilePreview(
+            appwriteconfig.storageId,
+            fileId,
+            2000,
+            2000,
+            "top" as any,
+            100
+        );
+
+        return fileUrl;
+        
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+export async function  deleteFile(fileId: string) {
+    try {
+        await storage.deleteFile(appwriteconfig.storageId,fileId);
+
+        return {status: 'ok'};
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+export async function getRecentPosts() {
+    const posts= await databases.listDocuments(
+        appwriteconfig.databaseId,
+        appwriteconfig.postCollectionId,
+        [Query.orderDesc('$createdAt'), Query.limit(20)]
+    )
+    
+    if(!posts) throw Error;
+
+    return posts;
+} 

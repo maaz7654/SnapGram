@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -16,28 +15,54 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "../ui/textarea"
 import FileUploader from "../shared/FileUploader"
+import { PostValidation } from "@/lib/validations"
+import { Models } from "appwrite"
+import { useCreatePost } from "@/lib/react-query/queriesAndMutations"
+import { useUserContext } from "@/context/AuthContext"
+import { toast, useToast } from "@/hooks/use-toast"
+import { useNavigate } from "react-router-dom"
+
+type PostFormProps = {
+  post?: Models.Document;
+}
  
  
-const formSchema = z.object({
-  username: z.string().min(2, {
-    message: "Username must be at least 2 characters.",
-  }),
-})
 
-const PostForm = () => {
+const PostForm = ({post}: PostFormProps) => {
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
+  const {mutateAsync: createPost, isPending: isLoadingCreate}=useCreatePost();
+  const {user} = useUserContext();
+  const {toast}=useToast();
+  const navigate=useNavigate();
+
+    const form = useForm<z.infer<typeof PostValidation>>({
+        resolver: zodResolver(PostValidation),
         defaultValues: {
-          username: "",
+          caption: post ? post?.caption: "",
+          file: [],
+          location: post ? post?.location : "",
+          tags: post? post.tags.join(','): '',
+
         },
       })
      
       // 2. Define a submit handler.
-      function onSubmit(values: z.infer<typeof formSchema>) {
-        // Do something with the form values.
-        // ✅ This will be type-safe and validated.
-        console.log(values)
+      async function onSubmit(values: z.infer<typeof PostValidation>) {
+        
+        const newPost = await createPost({
+          ...values,
+          userId: user.id
+        })
+
+        if(!newPost)
+        {
+          toast({
+            title: 'Please Try again'
+          })
+        }
+
+        navigate('/');
+
       }
 
 
@@ -64,7 +89,10 @@ const PostForm = () => {
           <FormItem>
             <FormLabel className="shad-form_label">Add Photos</FormLabel>
             <FormControl>
-              <FileUploader />
+              <FileUploader
+              fieldChange={field.onChange}
+              mediaUrl={post?.imageUrl}
+              />
             </FormControl>
             <FormMessage className="shad-form_message"/>
           </FormItem>
@@ -77,7 +105,7 @@ const PostForm = () => {
           <FormItem>
             <FormLabel className="shad-form_label">Add Location</FormLabel>
             <FormControl>
-              <Input type="text" className="shad-input" />
+              <Input type="text" className="shad-input" {...field}/>
             </FormControl>
             <FormMessage className="shad-form_message"/>
           </FormItem>
@@ -90,7 +118,7 @@ const PostForm = () => {
           <FormItem>
             <FormLabel className="shad-form_label">Add Tags (Separated by " , ")</FormLabel>
             <FormControl>
-              <Input type="text" className="shad-input" placeholder="Art,Expression,Learn"/>
+              <Input type="text" className="shad-input" placeholder="Art,Expression,Learn" {...field}/>
             </FormControl>
             <FormMessage className="shad-form_message"/>
           </FormItem>
