@@ -21,6 +21,7 @@ import { useCreatePost } from "@/lib/react-query/queriesAndMutations"
 import { useUserContext } from "@/context/AuthContext"
 import { toast, useToast } from "@/hooks/use-toast"
 import { useNavigate } from "react-router-dom"
+import { useState } from "react"
 
 type PostFormProps = {
   post?: Models.Document;
@@ -30,6 +31,7 @@ type PostFormProps = {
 
 const PostForm = ({post}: PostFormProps) => {
 
+  const [doubleSubmit,setDoubleSubmit]=useState(false);
   const {mutateAsync: createPost, isPending: isLoadingCreate}=useCreatePost();
   const {user} = useUserContext();
   const {toast}=useToast();
@@ -48,7 +50,13 @@ const PostForm = ({post}: PostFormProps) => {
      
       // 2. Define a submit handler.
       async function onSubmit(values: z.infer<typeof PostValidation>) {
+
+        if(doubleSubmit) {
+          return;
+        }
         
+        setDoubleSubmit(true);
+
         const newPost = await createPost({
           ...values,
           userId: user.id
@@ -60,7 +68,8 @@ const PostForm = ({post}: PostFormProps) => {
             title: 'Please Try again'
           })
         }
-
+        setDoubleSubmit(false);
+        
         navigate('/');
 
       }
