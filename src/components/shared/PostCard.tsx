@@ -67,7 +67,7 @@ const PostCard = ({post}:PostCardProps) => {
             <img 
             src={post.imageUrl || '/assets/icons/profile-placeholder.svg'} 
             alt="post image"
-            className='post-image rounded-2xl'
+            className='post-card_img'
             />
         </Link>
 

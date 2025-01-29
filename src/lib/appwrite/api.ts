@@ -1,5 +1,5 @@
 import { ID, Query } from "appwrite";
-import { INewPost, INewUser } from "@/types";
+import { INewPost, INewUser, IUpdatePost } from "@/types";
 import { account, appwriteconfig, avatars, databases, storage } from "./config";
 import { createPortal } from "react-dom";
 import { ImageDownIcon } from "lucide-react";
@@ -280,4 +280,148 @@ export async function deleteSavedPost(savedRecordId: string) {
     } catch (error) {
         console.log(error);
     }
+}
+
+
+export async function getPostById(postId: string) {
+    try {
+
+        const post = await databases.getDocument(
+            appwriteconfig.databaseId,
+            appwriteconfig.postCollectionId,
+            postId
+        )
+
+        
+        return post;
+
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+
+export async function updatePost(post: IUpdatePost) {
+
+    const hasFileToUpdate = post.file.length > 0;
+
+
+    try{
+    
+        let image = {
+            imageUrl: post.imageUrl,
+            imageId: post.imageId,
+        }
+
+
+        if(hasFileToUpdate) {
+            const uploadedFile = await uploadFile(post.file[0]);
+
+            if(!uploadedFile) throw Error;
+
+            const fileUrl=await getFilePreview(uploadedFile.$id);
+    
+            console.log(fileUrl)
+            if(!fileUrl) {
+                 deleteFile(uploadedFile.$id);
+                 throw Error;
+                 }
+                 image={...image,imageUrl: fileUrl,imageId: uploadedFile.$id}
+        }
+
+       const tags=post.tags?.replace(/ /g,' ').split(',') || [];
+        
+
+       //save post to database
+
+       const updatedPost= await databases.updateDocument(
+        appwriteconfig.databaseId,
+        appwriteconfig.postCollectionId,
+        post.postId,
+        {
+            
+            caption: post.caption,
+            imageUrl: image.imageUrl,
+            imageid: image.imageId,
+            location: post.location,
+            tags: tags,
+        }
+       );
+
+       if(!updatedPost)
+       {
+        deleteFile(post.imageId);
+        throw Error;
+       }
+
+       return updatedPost;
+        
+    } catch (error) {
+        console.log(error);
+    }
+
+}
+
+
+
+export async function deletePost(postId: string, imageId: string) {
+     if(!postId || !imageId) throw Error;
+    
+     try {
+        await databases.deleteDocument(
+            appwriteconfig.databaseId,
+            appwriteconfig.postCollectionId,
+            postId
+        )
+
+        return {status: 'ok'};
+        
+     } catch (error) {
+        console.log(error);
+     }
+
+}
+
+
+export async function getInfinitePosts({pageParam}:{pageParam:number}) {
+    const queries: any[] = [Query.orderDesc('$updatedAt'),Query.limit(10)
+    ]    
+
+    if(pageParam) {
+        queries.push(Query.cursorAfter(pageParam.toString()));
+    }
+
+    try {
+        const posts= await databases.listDocuments(
+            appwriteconfig.databaseId,
+            appwriteconfig.postCollectionId,
+            queries
+        )
+
+        if(!posts) throw Error;
+        
+        return posts;
+    } catch (error) {
+        console.log(error);
+    }
+
+}
+
+
+export async function searchPosts(searchTerm: string) {
+
+    try {
+        const posts= await databases.listDocuments(
+            appwriteconfig.databaseId,
+            appwriteconfig.postCollectionId,
+            [Query.search('caption',searchTerm)]
+        )
+
+        if(!posts) throw Error;
+  
+            return posts;
+    } catch (error) {
+        console.log(error);
+    }
+
 }
